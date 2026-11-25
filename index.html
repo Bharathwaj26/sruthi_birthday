@@ -1019,7 +1019,7 @@
       <span id="music-icon" aria-hidden="true">♪</span>
       <span id="music-label">Play music</span>
     </button>
-    <audio id="bg-audio" loop preload="none"></audio>
+    <audio id="bg-audio" src="assets/song.mp3" loop preload="auto"></audio>
 
     <header id="cake-page" class="hero">
       <p class="handwritten hero-note">for the one who makes every day better</p>
@@ -1413,14 +1413,6 @@
         lockScreen.hidden = true;
         birthdayPage.hidden = false;
         initScratchCanvases();
-        startMusic();
-        const startOnGesture = () => {
-          if (!musicPlaying) startMusic();
-          document.removeEventListener("pointerdown", startOnGesture);
-          document.removeEventListener("keydown", startOnGesture);
-        };
-        document.addEventListener("pointerdown", startOnGesture, { once: true });
-        document.addEventListener("keydown", startOnGesture, { once: true });
       }
 
       function updateCountdown() {
@@ -1749,46 +1741,11 @@
       }
 
       /* ---------------------------------------------------------------------
-         BACKGROUND MUSIC (FILE OR GENTLE BUILT-IN MUSIC-BOX FALLBACK)
+         BACKGROUND SONG (PLAYS WHEN CAKE CANDLE IS BLOWN OUT)
          --------------------------------------------------------------------- */
       const musicToggleBtn = document.getElementById("music-toggle");
       const musicLabel = document.getElementById("music-label");
       const bgAudio = document.getElementById("bg-audio");
-
-      let audioCtx = null;
-      let musicBoxTimer = null;
-
-      // Soft "Happy Birthday" music-box notes (Hz, duration in beats) when no external song is provided
-      const MUSIC_BOX_NOTES = [
-        [261.63, 0.75], [261.63, 0.25], [293.66, 1], [261.63, 1], [349.23, 1], [329.63, 2],
-        [261.63, 0.75], [261.63, 0.25], [293.66, 1], [261.63, 1], [392.00, 1], [349.23, 2],
-        [261.63, 0.75], [261.63, 0.25], [523.25, 1], [440.00, 1], [349.23, 1], [329.63, 1], [293.66, 2],
-        [466.16, 0.75], [466.16, 0.25], [440.00, 1], [349.23, 1], [392.00, 1], [349.23, 2.5]
-      ];
-      let noteIndex = 0;
-
-      function playMusicBoxNote() {
-        if (!musicPlaying || !audioCtx) return;
-        const [freq, beats] = MUSIC_BOX_NOTES[noteIndex % MUSIC_BOX_NOTES.length];
-        noteIndex++;
-
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now);
-
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.055, now + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + beats * 0.42);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(now);
-        osc.stop(now + beats * 0.44);
-
-        musicBoxTimer = setTimeout(playMusicBoxNote, beats * 430);
-      }
 
       function updateMusicButtonUI() {
         musicToggleBtn.setAttribute("aria-pressed", String(musicPlaying));
@@ -1797,52 +1754,28 @@
 
       function startMusic() {
         if (!SITE_CONFIG.music || !SITE_CONFIG.music.enabled) return;
-        musicToggleBtn.hidden = false;
-
-        if (SITE_CONFIG.music.src && SITE_CONFIG.music.src.trim() !== "") {
-          if (!bgAudio.getAttribute("src")) {
-            bgAudio.src = SITE_CONFIG.music.src;
-          }
-          if (!bgAudio.paused) {
-            musicPlaying = true;
-            updateMusicButtonUI();
-            return;
-          }
-          bgAudio.play().then(() => {
-            musicPlaying = true;
-            updateMusicButtonUI();
-          }).catch(() => {
-            musicPlaying = false;
-            updateMusicButtonUI();
-          });
-          return;
+        const songSrc = (SITE_CONFIG.music.src || "").trim() || "assets/song.mp3";
+        if (bgAudio.getAttribute("src") !== songSrc) {
+          bgAudio.src = songSrc;
         }
-
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
-        if (!audioCtx) {
-          audioCtx = new AudioContextClass();
-        }
-        if (audioCtx.state === "suspended") {
-          audioCtx.resume();
-        }
-        if (!musicPlaying) {
+        if (!bgAudio.paused) {
           musicPlaying = true;
           updateMusicButtonUI();
-          playMusicBoxNote();
+          return;
         }
+        bgAudio.play().then(() => {
+          musicPlaying = true;
+          updateMusicButtonUI();
+        }).catch(() => {
+          musicPlaying = false;
+          updateMusicButtonUI();
+        });
       }
 
       function stopMusic() {
         musicPlaying = false;
         updateMusicButtonUI();
-        if (SITE_CONFIG.music.src && SITE_CONFIG.music.src.trim() !== "") {
-          bgAudio.pause();
-        }
-        if (musicBoxTimer !== null) {
-          clearTimeout(musicBoxTimer);
-          musicBoxTimer = null;
-        }
+        bgAudio.pause();
       }
 
       musicToggleBtn.addEventListener("click", () => {
