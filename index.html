@@ -1313,7 +1313,7 @@
       // Paste your MP3/audio file or URL in `src`. If left empty, a gentle built-in music-box tune plays.
       music: {
         enabled: true,
-        src: ""
+        src: "assets/song.mp3"
       },
 
       // Optional Extra 2: "Open when…" envelopes (set `enabled: false` to remove)
@@ -1413,6 +1413,14 @@
         lockScreen.hidden = true;
         birthdayPage.hidden = false;
         initScratchCanvases();
+        startMusic();
+        const startOnGesture = () => {
+          if (!musicPlaying) startMusic();
+          document.removeEventListener("pointerdown", startOnGesture);
+          document.removeEventListener("keydown", startOnGesture);
+        };
+        document.addEventListener("pointerdown", startOnGesture, { once: true });
+        document.addEventListener("keydown", startOnGesture, { once: true });
       }
 
       function updateCountdown() {
@@ -1794,6 +1802,11 @@
         if (SITE_CONFIG.music.src && SITE_CONFIG.music.src.trim() !== "") {
           if (!bgAudio.getAttribute("src")) {
             bgAudio.src = SITE_CONFIG.music.src;
+          }
+          if (!bgAudio.paused) {
+            musicPlaying = true;
+            updateMusicButtonUI();
+            return;
           }
           bgAudio.play().then(() => {
             musicPlaying = true;
